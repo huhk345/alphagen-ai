@@ -1,0 +1,68 @@
+
+export type BenchmarkType = 'BTC-USD' | 'S&P 500' | 'CSI 300' | 'ETH-USD';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  provider: 'google';
+  isLoggedIn: boolean;
+}
+
+export interface AlphaFactor {
+  id: string;
+  userId?: string; // Owner of the factor
+  name: string;
+  formula: string;
+  description: string;
+  intuition: string;
+  category: 'Momentum' | 'Value' | 'Volatility' | 'Quality' | 'Sentiment' | 'Custom';
+  createdAt: number;
+  sources?: { title: string, url: string }[];
+  lastBenchmark?: BenchmarkType;
+}
+
+export interface PricePoint {
+  date: string;
+  close: number;
+}
+
+export interface BacktestMetrics {
+  sharpeRatio: number;
+  annualizedReturn: number;
+  maxDrawdown: number;
+  volatility: number;
+  winRate: number;
+  benchmarkName: string;
+}
+
+export interface BacktestDataPoint {
+  date: string;
+  strategyReturn: number;
+  benchmarkReturn: number;
+  cumulativeStrategy: number;
+  cumulativeBenchmark: number;
+  signal?: 'BUY' | 'SELL';
+}
+
+export interface Trade {
+  date: string;
+  type: 'BUY' | 'SELL';
+  price: number;
+  quantity: number;
+  amount: number;
+}
+
+export interface BacktestResult {
+  data: BacktestDataPoint[];
+  metrics: BacktestMetrics;
+  trades: Trade[];
+}
+
+export interface GenerationConfig {
+  investmentUniverse: string;
+  timeHorizon: string;
+  riskTolerance: 'Low' | 'Medium' | 'High';
+  targetMetrics: string[];
+}

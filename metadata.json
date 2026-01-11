@@ -1,0 +1,5 @@
+{
+  "name": "AlphaGen AI Studio",
+  "description": "An intelligent platform for quantitative researchers to discover, generate, and simulate alpha factors using Gemini AI. Design mathematical trading signals with economic intuition and visualize their simulated performance.",
+  "requestFramePermissions": []
+}
