@@ -21,25 +21,25 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ data, metri
           label="Sharpe Ratio" 
           value={metrics.sharpeRatio.toFixed(2)} 
           icon={<TrendingUp className="text-green-500" />}
-          trend="+12%"
+          trend=""
         />
         <MetricCard 
           label="Annual Return" 
           value={`${metrics.annualizedReturn.toFixed(1)}%`} 
           icon={<Activity className="text-blue-500" />}
-          trend="+5%"
+          trend=""
         />
         <MetricCard 
           label="Max Drawdown" 
           value={`${metrics.maxDrawdown.toFixed(1)}%`} 
           icon={<AlertTriangle className="text-red-500" />}
-          trend="-2%"
+          trend=""
         />
         <MetricCard 
           label="Volatility" 
           value={`${metrics.volatility.toFixed(1)}%`} 
           icon={<BarChart3 className="text-purple-500" />}
-          trend="Stable"
+          trend=""
         />
       </div>
 

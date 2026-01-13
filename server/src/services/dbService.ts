@@ -50,6 +50,8 @@ export const saveFactor = async (userId: string, f: AlphaFactor): Promise<void> 
       category: f.category,
       sources: f.sources || [],
       last_benchmark: f.lastBenchmark,
+      buy_threshold: f.buyThreshold,
+      sell_threshold: f.sellThreshold,
       created_at: new Date(f.createdAt).toISOString()
     }, { onConflict: 'id' });
 
@@ -92,6 +94,8 @@ export const syncFactors = async (userId: string, factors: AlphaFactor[]): Promi
         category: f.category,
         sources: f.sources || [],
         last_benchmark: f.lastBenchmark,
+        buy_threshold: f.buyThreshold,
+        sell_threshold: f.sellThreshold,
         created_at: new Date(f.createdAt).toISOString()
       })),
       { onConflict: 'id' }
@@ -128,7 +132,9 @@ export const fetchFactors = async (userId: string): Promise<AlphaFactor[]> => {
     category: f.category as any,
     createdAt: new Date(f.created_at).getTime(),
     sources: f.sources,
-    lastBenchmark: f.last_benchmark
+    lastBenchmark: f.last_benchmark,
+    buyThreshold: f.buy_threshold,
+    sellThreshold: f.sell_threshold
   }));
 };
 

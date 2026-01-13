@@ -21,6 +21,8 @@ export interface AlphaFactor {
   createdAt: number;
   sources?: { title: string, url: string }[];
   lastBenchmark?: BenchmarkType;
+  buyThreshold?: string;
+  sellThreshold?: string;
 }
 
 export interface PricePoint {

@@ -6,10 +6,9 @@ import AuthModal from './components/AuthModal';
 import PerformanceDashboard from './components/PerformanceDashboard';
 import { AlphaFactor, BacktestDataPoint, BacktestMetrics, GenerationConfig, BenchmarkType, User, Trade } from './types';
 import { generateAlphaFactor, generateBulkAlphaFactors } from './services/geminiService';
-import { fetchMarketData } from './services/dataService';
+import { runBacktestOnServer } from './services/dataService';
 import { getSession, logout } from './services/authService';
 import { fetchFactorsFromCloud, saveBacktestResultToCloud, saveFactorToCloud, deleteFactorFromCloud } from './services/dbService';
-import { runRealBacktest } from './utils/simulation';
 import { BrainCircuit, Play, ChevronRight, Copy, Terminal, Info, LayoutDashboard, AlertCircle, ExternalLink, Globe, CloudDownload, Cloud } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -108,8 +107,12 @@ const App: React.FC = () => {
     setError(null);
     setSelectedBenchmark(benchmark);
     try {
-      const priceSeries = await fetchMarketData(benchmark);
-      const result = runRealBacktest(activeFactor.formula, priceSeries, benchmark);
+      const result = await runBacktestOnServer(
+        activeFactor.formula, 
+        benchmark,
+        activeFactor.buyThreshold,
+        activeFactor.sellThreshold
+      );
       setSimulationData(result);
       
       // Save backtest result to cloud if user is logged in
@@ -141,7 +144,7 @@ const App: React.FC = () => {
         saveFactorToCloud(user.id, newFactor).catch(console.error);
       }
     } catch (err: any) {
-      setError("AI Generation failed.");
+      setError(err.message || "AI Generation failed.");
     } finally {
       setIsGenerating(false);
     }
@@ -163,7 +166,7 @@ const App: React.FC = () => {
         Promise.all(newFactors.map(f => saveFactorToCloud(user.id, f))).catch(console.error);
       }
     } catch (err: any) {
-      setError("Bulk Discovery failed.");
+      setError(err.message || "Bulk Discovery failed.");
     } finally {
       setIsGenerating(false);
     }
@@ -254,6 +257,12 @@ const App: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <span className="px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg border bg-blue-500/10 text-blue-500 border-blue-500/20">{activeFactor?.category} Mode</span>
                     <span className="text-[10px] text-gray-700 font-black uppercase tracking-widest bg-gray-900 px-3 py-1 rounded-lg">ID: {activeFactor?.id}</span>
+                    {activeFactor?.buyThreshold && (
+                      <span className="text-[10px] text-green-500 font-black uppercase tracking-widest bg-green-500/10 border border-green-500/20 px-3 py-1 rounded-lg">Buy: {activeFactor.buyThreshold}</span>
+                    )}
+                    {activeFactor?.sellThreshold && (
+                      <span className="text-[10px] text-red-400 font-black uppercase tracking-widest bg-red-400/10 border border-red-400/20 px-3 py-1 rounded-lg">Sell: {activeFactor.sellThreshold}</span>
+                    )}
                   </div>
                   <h1 className="text-7xl font-black text-white tracking-tighter uppercase italic leading-[0.85]">
                     {activeFactor?.name?.replace(/_/g, ' ')}
