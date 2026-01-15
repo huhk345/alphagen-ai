@@ -47,12 +47,19 @@ app.get('/api/market-data', async (req, res) => {
 // Backtest Route
 app.post('/api/backtest', async (req, res) => {
   try {
-    const { formula, benchmark, buyThreshold, sellThreshold } = req.body;
+    const { formula, benchmark, buyThreshold, sellThreshold, pythonCode } = req.body;
     if (!formula || !benchmark) {
       return res.status(400).json({ error: 'Formula and benchmark are required' });
     }
     
-    const result = await runBacktest(formula, benchmark as BenchmarkType, buyThreshold, sellThreshold, (req as any).requestId);
+    const result = await runBacktest(
+      formula,
+      benchmark as BenchmarkType,
+      buyThreshold,
+      sellThreshold,
+      (req as any).requestId,
+      pythonCode
+    );
     res.json(result);
   } catch (error: any) {
     console.error(`[HTTP] [${(req as any).requestId}] Backtest error:`, error.message);

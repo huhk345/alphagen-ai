@@ -23,6 +23,7 @@ export interface AlphaFactor {
   lastBenchmark?: BenchmarkType;
   buyThreshold?: string;
   sellThreshold?: string;
+  pythonCode?: string;
 }
 
 export interface PricePoint {
@@ -65,6 +66,7 @@ export interface BacktestResult {
   data: BacktestDataPoint[];
   metrics: BacktestMetrics;
   trades: Trade[];
+  pythonCode?: string;
 }
 
 export interface GenerationConfig {

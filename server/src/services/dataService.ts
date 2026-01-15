@@ -128,7 +128,8 @@ export const runBacktest = async (
   benchmark: BenchmarkType,
   buyThreshold?: string,
   sellThreshold?: string,
-  requestId?: string
+  requestId?: string,
+  pythonCode?: string
 ): Promise<BacktestResult> => {
   const id = requestId || `bk-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   console.log(`[Backtest] [${id}] Starting backtest benchmark=${benchmark}`);
@@ -138,8 +139,8 @@ export const runBacktest = async (
   console.log(`[Backtest] [${id}] Loaded market data points=${priceData.length}`);
   
   try {
-    const pythonScript = await generateBacktestPythonCode(formula);
-    console.log(`[Backtest] [${id}] Generated python script size=${pythonScript.length}`);
+    const pythonScript = pythonCode || await generateBacktestPythonCode(formula);
+    console.log(`[Backtest] [${id}] Generated python script : \n ${pythonScript}`);
     
     try {
       const response = await axios.post('http://localhost:5001/execute', {
@@ -166,7 +167,10 @@ export const runBacktest = async (
         console.log(`[Backtest] [${id}] Metrics sharpe=${m.sharpeRatio} annReturn=${m.annualizedReturn} maxDD=${m.maxDrawdown}`);
       }
 
-      let payload: BacktestResult = result.result;
+      let payload: BacktestResult = {
+        ...result.result,
+        pythonCode: pythonScript
+      };
       if (Array.isArray(payload?.data) && payload.data.length > 0) {
         const syntheticTrades = buildLongOnlyTrades(payload.data, priceData);
         if (syntheticTrades.length > 0) {

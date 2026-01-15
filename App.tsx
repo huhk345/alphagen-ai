@@ -4,12 +4,12 @@ import Sidebar from './components/Sidebar';
 import GeneratorOverlay from './components/GeneratorOverlay';
 import AuthModal from './components/AuthModal';
 import PerformanceDashboard from './components/PerformanceDashboard';
-import { AlphaFactor, BacktestDataPoint, BacktestMetrics, GenerationConfig, BenchmarkType, User, Trade } from './types';
+import { AlphaFactor, BacktestDataPoint, BacktestMetrics, GenerationConfig, BenchmarkType, User, Trade, BacktestResult } from './types';
 import { generateAlphaFactor, generateBulkAlphaFactors } from './services/geminiService';
 import { runBacktestOnServer } from './services/dataService';
 import { getSession, logout } from './services/authService';
 import { fetchFactorsFromCloud, saveBacktestResultToCloud, saveFactorToCloud, deleteFactorFromCloud } from './services/dbService';
-import { BrainCircuit, Play, ChevronRight, Copy, Terminal, Info, LayoutDashboard, AlertCircle, ExternalLink, Globe, CloudDownload, Cloud } from 'lucide-react';
+import { BrainCircuit, Play, ChevronRight, Copy, Terminal, Info, LayoutDashboard, AlertCircle, ExternalLink, Globe, CloudDownload, Cloud, Code2 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -22,8 +22,8 @@ const App: React.FC = () => {
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedBenchmark, setSelectedBenchmark] = useState<BenchmarkType>('BTC-USD');
-  const [simulationData, setSimulationData] = useState<{data: BacktestDataPoint[], metrics: BacktestMetrics, trades: Trade[]} | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'code'>('overview');
+  const [simulationData, setSimulationData] = useState<BacktestResult | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'code' | 'python'>('overview');
   const [error, setError] = useState<string | null>(null);
 
   const activeFactor = factors.find(f => f.id === activeFactorId);
@@ -111,14 +111,33 @@ const App: React.FC = () => {
         activeFactor.formula, 
         benchmark,
         activeFactor.buyThreshold,
-        activeFactor.sellThreshold
+        activeFactor.sellThreshold,
+        activeFactor.pythonCode
       );
       setSimulationData(result);
       
       // Save backtest result to cloud if user is logged in
+      if (result.pythonCode && activeFactor) {
+        setFactors(prev =>
+          prev.map(f =>
+            f.id === activeFactor.id ? { ...f, pythonCode: result.pythonCode } : f
+          )
+        );
+        if (user) {
+          const updatedFactor: AlphaFactor = {
+            ...activeFactor,
+            pythonCode: result.pythonCode
+          };
+          saveFactorToCloud(user.id, updatedFactor).catch(err =>
+            console.error("Failed to save factor with python code:", err)
+          );
+        }
+      }
+      
       if (user && activeFactor.id) {
-        saveBacktestResultToCloud(user.id, activeFactor.id, result)
-          .catch(err => console.error("Failed to save backtest result:", err));
+        saveBacktestResultToCloud(user.id, activeFactor.id, result).catch(err =>
+          console.error("Failed to save backtest result:", err)
+        );
       }
     } catch (err: any) {
       setError("Failed to fetch market data.");
@@ -214,21 +233,26 @@ const App: React.FC = () => {
             </nav>
           </div>
           <div className="flex items-center gap-3">
-             <div className="flex bg-gray-900/50 p-1 rounded-xl border border-gray-800">
-                {[
-                  { id: 'overview', icon: LayoutDashboard, label: 'Analytics' },
-                  { id: 'code', icon: Terminal, label: 'Logic' }
-                ].map(tab => (
-                  <button 
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-gray-500 hover:text-gray-300'}`}
-                  >
-                    <tab.icon className="w-3 h-3" />
-                    {tab.label}
-                  </button>
-                ))}
-             </div>
+            <div className="flex bg-gray-900/50 p-1 rounded-xl border border-gray-800">
+              {[
+                { id: 'overview', icon: LayoutDashboard, label: 'Analytics' },
+                { id: 'code', icon: Terminal, label: 'Logic' },
+                { id: 'python', icon: Code2, label: 'Python' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    activeTab === tab.id
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40'
+                      : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  <tab.icon className="w-3 h-3" />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
         </header>
 
@@ -350,10 +374,18 @@ const App: React.FC = () => {
               )}
 
               {activeTab === 'code' && activeFactor && (
-                <div className="bg-gray-900/20 border border-gray-800 rounded-[40px] overflow-hidden p-12">
-                   <pre className="text-gray-400 font-mono text-sm leading-8">
+                <div className="bg-gray-900/20 border border-gray-800 rounded-[40px] p-12">
+                  <pre className="text-gray-400 font-mono text-sm leading-8 whitespace-pre-wrap break-all">
                      {`# Strategy: ${activeFactor.name}\n# Formula: ${activeFactor.formula}\n\ndef compute_signal(df):\n    return ${activeFactor.formula}`}
-                   </pre>
+                  </pre>
+                </div>
+              )}
+
+              {activeTab === 'python' && activeFactor && (
+                <div className="bg-gray-900/20 border border-gray-800 rounded-[40px] p-12">
+                  <pre className="text-gray-400 font-mono text-sm leading-8 whitespace-pre-wrap break-all">
+                    {activeFactor.pythonCode || '# Please run a backtest first to generate the Python factor calculation code'}
+                  </pre>
                 </div>
               )}
             </div>

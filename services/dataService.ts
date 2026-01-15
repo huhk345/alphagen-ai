@@ -1,4 +1,4 @@
-import { BenchmarkType } from "../types";
+import { BenchmarkType, BacktestResult } from "../types";
 
 const API_BASE_URL = process.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -17,13 +17,14 @@ export const runBacktestOnServer = async (
   formula: string, 
   benchmark: BenchmarkType,
   buyThreshold?: string,
-  sellThreshold?: string
-): Promise<any> => {
+  sellThreshold?: string,
+  pythonCode?: string
+): Promise<BacktestResult> => {
   try {
     const response = await fetch(`${API_BASE_URL}/backtest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ formula, benchmark, buyThreshold, sellThreshold })
+      body: JSON.stringify({ formula, benchmark, buyThreshold, sellThreshold, pythonCode })
     });
     
     if (!response.ok) {

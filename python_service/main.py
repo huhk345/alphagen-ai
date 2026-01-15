@@ -70,6 +70,10 @@ def run_backtest(df, benchmark_name, buy_threshold, sell_threshold):
     df["signal"] = pd.Series(signals, index=df.index)
     df["strategyReturn"] = df["position"].shift(1).fillna(0) * df["return"]
     df["benchmarkReturn"] = df["return"]
+
+    df["strategyReturn"] = df["strategyReturn"].replace([np.inf, -np.inf], 0).fillna(0)
+    df["benchmarkReturn"] = df["benchmarkReturn"].replace([np.inf, -np.inf], 0).fillna(0)
+
     df["cumulativeStrategy"] = (1 + df["strategyReturn"]).cumprod()
     df["cumulativeBenchmark"] = (1 + df["benchmarkReturn"]).cumprod()
     n = len(df)
@@ -93,6 +97,16 @@ def run_backtest(df, benchmark_name, buy_threshold, sell_threshold):
         wins = int((df["strategyReturn"] > 0).sum())
         total_trades = int((df["strategyReturn"] != 0).sum())
         win_rate = float(wins / total_trades * 100) if total_trades > 0 else 0.0
+
+    def _clean_num(x, default=0.0):
+        try:
+            v = float(x)
+        except Exception:
+            return default
+        if np.isnan(v) or np.isinf(v):
+            return default
+        return v
+
     records = []
     for _, row in df.iterrows():
         date = row["date"]
@@ -100,27 +114,30 @@ def run_backtest(df, benchmark_name, buy_threshold, sell_threshold):
             date_str = date.strftime("%Y-%m-%d")
         else:
             date_str = date
+        signal_val = row.get("signal")
+        if isinstance(signal_val, float) and (np.isnan(signal_val) or np.isinf(signal_val)):
+            signal_val = None
         records.append(
             {
                 "date": date_str,
-                "strategyReturn": float(row.get("strategyReturn", 0.0)),
-                "benchmarkReturn": float(row.get("benchmarkReturn", 0.0)),
-                "cumulativeStrategy": float(row.get("cumulativeStrategy", 1.0)),
-                "cumulativeBenchmark": float(row.get("cumulativeBenchmark", 1.0)),
-                "signal": row.get("signal"),
+                "strategyReturn": _clean_num(row.get("strategyReturn", 0.0), 0.0),
+                "benchmarkReturn": _clean_num(row.get("benchmarkReturn", 0.0), 0.0),
+                "cumulativeStrategy": _clean_num(row.get("cumulativeStrategy", 1.0), 1.0),
+                "cumulativeBenchmark": _clean_num(row.get("cumulativeBenchmark", 1.0), 1.0),
+                "signal": signal_val,
             }
         )
     ic = calculate_ic(df)
     result = {
         "data": records,
         "metrics": {
-            "sharpeRatio": float(sharpe),
-            "annualizedReturn": float(ann_return),
-            "maxDrawdown": float(max_dd),
-            "volatility": float(vol),
-            "winRate": float(win_rate),
+            "sharpeRatio": _clean_num(sharpe, 0.0),
+            "annualizedReturn": _clean_num(ann_return, 0.0),
+            "maxDrawdown": _clean_num(max_dd, 0.0),
+            "volatility": _clean_num(vol, 0.0),
+            "winRate": _clean_num(win_rate, 0.0),
             "benchmarkName": str(benchmark_name),
-            "ic": float(ic) if ic == ic else None,
+            "ic": None if ic is None or (isinstance(ic, float) and (np.isnan(ic) or np.isinf(ic))) else float(ic),
         },
         "trades": [],
     }

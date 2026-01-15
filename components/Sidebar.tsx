@@ -78,41 +78,61 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
         
         <div className="space-y-1.5">
-          {factors.map(f => (
-            <button
-              key={f.id}
-              onClick={() => onSelectFactor(f.id)}
-              className={`w-full text-left px-4 py-3 rounded-xl transition-all group border ${
-                activeFactorId === f.id 
-                  ? 'bg-blue-600/5 border-blue-500/30 ring-1 ring-blue-500/20 shadow-inner' 
-                  : 'border-transparent hover:bg-gray-900 hover:border-gray-800'
-              }`}
-            >
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <span className={`text-[10px] font-bold uppercase tracking-tighter ${
-                    activeFactorId === f.id ? 'text-blue-400' : 'text-gray-500'
-                  }`}>
-                    {f.category}
-                  </span>
-                  <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
-                    {Math.random() > 0.5 ? <TrendingUp className="w-3 h-3 text-green-500" /> : <TrendingDown className="w-3 h-3 text-red-400" />}
+          {isSyncing && factors.length === 0 ? (
+            <div className="space-y-2 animate-pulse">
+              {[1, 2, 3, 4].map(i => (
+                <div
+                  key={i}
+                  className="px-4 py-3 rounded-xl border border-gray-800 bg-gray-900/60"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="h-2 w-16 bg-gray-800 rounded-full" />
+                    <div className="h-3 w-6 bg-gray-800 rounded-full" />
                   </div>
+                  <div className="h-3 w-32 bg-gray-800 rounded-full mb-1.5" />
+                  <div className="h-2 w-full bg-gray-900 rounded-full" />
                 </div>
-                <h4 className={`text-sm font-bold truncate ${activeFactorId === f.id ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>
-                  {f.name}
-                </h4>
-                <p className="text-[10px] text-gray-600 truncate line-clamp-1 opacity-70 font-mono">
-                  {f.formula}
-                </p>
-              </div>
-            </button>
-          ))}
-          {factors.length === 0 && (
-            <div className="text-center py-10 opacity-20 flex flex-col items-center gap-2">
-              <Database className="w-8 h-8" />
-              <p className="text-xs">No factors created yet</p>
+              ))}
             </div>
+          ) : (
+            <>
+              {factors.map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => onSelectFactor(f.id)}
+                  className={`w-full text-left px-4 py-3 rounded-xl transition-all group border ${
+                    activeFactorId === f.id 
+                      ? 'bg-blue-600/5 border-blue-500/30 ring-1 ring-blue-500/20 shadow-inner' 
+                      : 'border-transparent hover:bg-gray-900 hover:border-gray-800'
+                  }`}
+                >
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[10px] font-bold uppercase tracking-tighter ${
+                        activeFactorId === f.id ? 'text-blue-400' : 'text-gray-500'
+                      }`}>
+                        {f.category}
+                      </span>
+                      <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                        {Math.random() > 0.5 ? <TrendingUp className="w-3 h-3 text-green-500" /> : <TrendingDown className="w-3 h-3 text-red-400" />}
+                      </div>
+                    </div>
+                    <h4 className={`text-sm font-bold truncate ${activeFactorId === f.id ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>
+                      {f.name}
+                    </h4>
+                    <p className="text-[10px] text-gray-600 truncate line-clamp-1 opacity-70 font-mono">
+                      {f.formula}
+                    </p>
+                  </div>
+                </button>
+              ))}
+              {factors.length === 0 && (
+                <div className="text-center py-10 opacity-20 flex flex-col items-center gap-2">
+                  <Database className="w-8 h-8" />
+                  <p className="text-xs">No factors created yet</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

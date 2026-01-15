@@ -101,25 +101,25 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ data, metri
         />
         <MetricCard 
           label="Annual Return" 
-          value={`${metrics.annualizedReturn.toFixed(1)}%`} 
+          value={`${metrics.annualizedReturn.toFixed(2)}%`} 
           icon={<Activity className="text-blue-500" />}
           trend=""
         />
         <MetricCard 
           label="Max Drawdown" 
-          value={`${metrics.maxDrawdown.toFixed(1)}%`} 
+          value={`${metrics.maxDrawdown.toFixed(2)}%`} 
           icon={<AlertTriangle className="text-red-500" />}
           trend=""
         />
         <MetricCard 
           label="Volatility" 
-          value={`${metrics.volatility.toFixed(1)}%`} 
+          value={`${metrics.volatility.toFixed(2)}%`} 
           icon={<BarChart3 className="text-purple-500" />}
           trend=""
         />
         <MetricCard 
-          label="IC (Info Coeff)" 
-          value={metrics.ic !== undefined ? metrics.ic.toFixed(4) : "N/A"} 
+          label="IC" 
+          value={metrics.ic !== undefined ? metrics.ic.toFixed(2) : "N/A"} 
           icon={<BrainCircuit className="text-yellow-500" />}
           trend=""
         />
@@ -209,16 +209,20 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ data, metri
 };
 
 const MetricCard = ({ label, value, icon, trend }: { label: string, value: string, icon: React.ReactNode, trend?: string }) => (
-  <div className="h-full bg-gray-950 border border-gray-800 rounded-2xl p-5 hover:border-gray-700 transition-colors flex flex-col justify-between">
-    <div className="flex justify-between items-start mb-3">
-      <div className="p-2 bg-gray-900 rounded-lg">{icon}</div>
-      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${trend?.startsWith('+') ? 'bg-green-500/10 text-green-500' : 'bg-gray-800 text-gray-400'}`}>
+  <div className="h-full min-h-[132px] bg-gray-950 border border-gray-800 rounded-2xl p-5 hover:border-gray-700 transition-colors flex flex-col">
+    <div className="flex items-center justify-between mb-4 min-h-[28px]">
+      <div className="p-2 bg-gray-900 rounded-lg flex items-center justify-center">{icon}</div>
+      <span
+        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+          trend && trend.startsWith('+') ? 'bg-green-500/10 text-green-500' : 'bg-gray-800 text-gray-400'
+        }`}
+      >
         {trend}
       </span>
     </div>
-    <div className="space-y-1">
+    <div className="mt-auto h-16 flex flex-col justify-between text-right">
       <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
-      <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">{label}</p>
+      <p className="text-xs text-gray-500 font-medium uppercase tracking-wider leading-tight break-words">{label}</p>
     </div>
   </div>
 );

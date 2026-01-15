@@ -52,6 +52,7 @@ export const saveFactor = async (userId: string, f: AlphaFactor): Promise<void> 
       last_benchmark: f.lastBenchmark,
       buy_threshold: f.buyThreshold,
       sell_threshold: f.sellThreshold,
+      python_code: f.pythonCode,
       created_at: new Date(f.createdAt).toISOString()
     }, { onConflict: 'id' });
 
@@ -96,6 +97,7 @@ export const syncFactors = async (userId: string, factors: AlphaFactor[]): Promi
         last_benchmark: f.lastBenchmark,
         buy_threshold: f.buyThreshold,
         sell_threshold: f.sellThreshold,
+        python_code: f.pythonCode,
         created_at: new Date(f.createdAt).toISOString()
       })),
       { onConflict: 'id' }
@@ -134,7 +136,8 @@ export const fetchFactors = async (userId: string): Promise<AlphaFactor[]> => {
     sources: f.sources,
     lastBenchmark: f.last_benchmark,
     buyThreshold: f.buy_threshold,
-    sellThreshold: f.sell_threshold
+    sellThreshold: f.sell_threshold,
+    pythonCode: f.python_code
   }));
 };
 
