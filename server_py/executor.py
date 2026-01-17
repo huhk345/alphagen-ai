@@ -1,26 +1,14 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-import json
+from typing import Any, Dict
+
 import logging
 import time
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 import pandas_ta as ta
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
 
-app = FastAPI()
-
-
-class BacktestRequest(BaseModel):
-    code: str
-    data: dict
-
-
-def calculate_ic(df):
+def calculate_ic(df: pd.DataFrame) -> float:
     try:
         temp = df.copy()
         temp["next_return"] = temp["close"].shift(-1) / temp["close"] - 1
@@ -32,7 +20,12 @@ def calculate_ic(df):
         return float("nan")
 
 
-def run_backtest(df, benchmark_name, buy_threshold, sell_threshold):
+def run_backtest(
+    df: pd.DataFrame,
+    benchmark_name: str,
+    buy_threshold: Any,
+    sell_threshold: Any,
+) -> Dict[str, Any]:
     df = df.copy()
     df["return"] = df["close"].pct_change()
     factor = df["factor"].astype(float).replace([np.inf, -np.inf], 0).fillna(0)
@@ -98,7 +91,7 @@ def run_backtest(df, benchmark_name, buy_threshold, sell_threshold):
         total_trades = int((df["strategyReturn"] != 0).sum())
         win_rate = float(wins / total_trades * 100) if total_trades > 0 else 0.0
 
-    def _clean_num(x, default=0.0):
+    def _clean_num(x, default: float = 0.0) -> float:
         try:
             v = float(x)
         except Exception:
@@ -128,7 +121,7 @@ def run_backtest(df, benchmark_name, buy_threshold, sell_threshold):
             }
         )
     ic = calculate_ic(df)
-    result = {
+    result: Dict[str, Any] = {
         "data": records,
         "metrics": {
             "sharpeRatio": _clean_num(sharpe, 0.0),
@@ -144,32 +137,35 @@ def run_backtest(df, benchmark_name, buy_threshold, sell_threshold):
     return result
 
 
-@app.post("/execute")
-async def execute_backtest(request: BacktestRequest):
+def execute_backtest(code: str, data: Dict[str, Any]) -> Dict[str, Any]:
     request_id = f"py-{int(time.time() * 1000)}"
     logging.info("[%s] Received backtest execute request", request_id)
     try:
-        price_data = request.data.get("priceData", [])
+        logging.info("[%s] Raw data keys: %s", request_id, list(data.keys()))
+        price_data = data.get("priceData", [])
         data_summary = {
             "has_priceData": bool(price_data),
             "priceData_len": len(price_data),
-            "has_formula": "formula" in request.data,
-            "benchmark": request.data.get("benchmark"),
+            "has_formula": "formula" in data,
+            "benchmark": data.get("benchmark"),
         }
         logging.info("[%s] Input summary %s", request_id, data_summary)
         if not price_data:
             return {"status": "error", "error": "priceData is empty"}
+        logging.info("[%s] Building DataFrame from priceData len=%d", request_id, len(price_data))
         df = pd.DataFrame(price_data)
         if "date" not in df.columns or "close" not in df.columns:
             return {"status": "error", "error": "priceData must contain date and close fields"}
+        logging.info("[%s] Converting date column and sorting", request_id)
         df["date"] = pd.to_datetime(df["date"])
         df = df.sort_values("date").reset_index(drop=True)
         df = df.set_index("date", drop=False)
         local_vars = {"df": df, "ta": ta, "np": np, "pd": pd}
-        code = request.code or ""
+        code_str = code or ""
+        logging.info("[%s] Executing factor code length=%d", request_id, len(code_str))
         start = time.time()
         try:
-            exec(code, {}, local_vars)
+            exec(code_str, {}, local_vars)
         except Exception as e:
             duration = (time.time() - start) * 1000
             logging.exception("[%s] Factor code execution error after %.2f ms: %s", request_id, duration, str(e))
@@ -180,18 +176,12 @@ async def execute_backtest(request: BacktestRequest):
         if "factor" not in df.columns:
             return {"status": "error", "error": "Factor code did not produce 'factor' column"}
         df["factor"] = df["factor"].replace([np.inf, -np.inf], 0).fillna(0)
-        benchmark = request.data.get("benchmark") or "Benchmark"
-        buy_threshold = request.data.get("buyThreshold")
-        sell_threshold = request.data.get("sellThreshold")
+        benchmark = data.get("benchmark") or "Benchmark"
+        buy_threshold = data.get("buyThreshold")
+        sell_threshold = data.get("sellThreshold")
         result = run_backtest(df, benchmark, buy_threshold, sell_threshold)
         logging.info("[%s] Backtest completed", request_id)
         return {"status": "success", "result": result}
     except Exception as e:
         logging.exception("[%s] Server error %s", request_id, str(e))
         return {"status": "error", "error": str(e)}
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=5001)
