@@ -90,6 +90,8 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ data, metri
     };
   }, [data]);
 
+  const icValue = typeof metrics.ic === 'number' && !Number.isNaN(metrics.ic) ? metrics.ic.toFixed(2) : "N/A";
+
   return (
     <div className="space-y-6 animate-in fade-in duration-700">
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -101,25 +103,25 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ data, metri
         />
         <MetricCard 
           label="Annual Return" 
-          value={`${metrics.annualizedReturn.toFixed(2)}%`} 
+          value={`${(metrics.annualizedReturn * 100).toFixed(2)}%`} 
           icon={<Activity className="text-blue-500" />}
           trend=""
         />
         <MetricCard 
           label="Max Drawdown" 
-          value={`${metrics.maxDrawdown.toFixed(2)}%`} 
+          value={`${(metrics.maxDrawdown * 100).toFixed(2)}%`} 
           icon={<AlertTriangle className="text-red-500" />}
           trend=""
         />
         <MetricCard 
           label="Volatility" 
-          value={`${metrics.volatility.toFixed(2)}%`} 
+          value={`${(metrics.volatility * 100).toFixed(2)}%`} 
           icon={<BarChart3 className="text-purple-500" />}
           trend=""
         />
         <MetricCard 
           label="IC" 
-          value={metrics.ic !== undefined ? metrics.ic.toFixed(2) : "N/A"} 
+          value={icValue} 
           icon={<BrainCircuit className="text-yellow-500" />}
           trend=""
         />
@@ -155,7 +157,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ data, metri
         <div>
             <h4 className="text-sm font-semibold text-blue-300">Statistical Analysis</h4>
             <p className="text-xs text-blue-400/70 mt-1 leading-relaxed">
-              Based on our simulation against <b>{metrics.benchmarkName}</b>, the <b>{factorName}</b> strategy demonstrates a statistically significant win rate of {metrics.winRate.toFixed(1)}%. 
+              Based on our simulation against <b>{metrics.benchmarkName}</b>, the <b>{factorName}</b> strategy demonstrates a statistically significant win rate of {Number.isFinite(metrics.winRate) ? metrics.winRate.toFixed(1) : '0.0'}%. 
               Risk-adjusted returns are consistent with factor models capturing {metrics.annualizedReturn > 10 ? 'excess' : 'standard'} market alpha.
             </p>
         </div>
