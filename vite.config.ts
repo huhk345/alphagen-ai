@@ -11,9 +11,9 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
-        'process.env.API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || env.GEMINI_API_KEY),
         'process.env.GOOGLE_CLIENT_ID': JSON.stringify(env.VITE_GOOGLE_CLIENT_ID || env.GOOGLE_CLIENT_ID),
         'process.env.ALLOWED_EMAILS': JSON.stringify(env.VITE_ALLOWED_EMAILS || env.ALLOWED_EMAILS),
+        'process.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL),
       },
       resolve: {
         alias: {
