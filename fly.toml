@@ -1,6 +1,6 @@
 app = "alphagen-ai-server-py"
 
-primary_region = "iad"
+primary_region = "nrt"
 
 [build]
   dockerfile = "Dockerfile"
