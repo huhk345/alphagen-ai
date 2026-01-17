@@ -1,5 +1,5 @@
 
-export type BenchmarkType = 'BTC-USD' | 'S&P 500' | 'CSI 300' | 'ETH-USD';
+export type BenchmarkType = 'BTC-USD' | 'S&P 500' | 'CSI 300' | 'ETH-USD' | 'CUSTOM_A';
 
 export interface User {
   id: string;
@@ -8,6 +8,7 @@ export interface User {
   avatar: string;
   provider: 'google';
   isLoggedIn: boolean;
+  accessToken?: string;
 }
 
 export interface AlphaFactor {

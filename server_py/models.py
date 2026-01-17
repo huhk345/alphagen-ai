@@ -9,6 +9,7 @@ class BenchmarkType(str, Enum):
     SP500 = "S&P 500"
     CSI300 = "CSI 300"
     ETH_USD = "ETH-USD"
+    CUSTOM_A = "CUSTOM_A"
 
 
 class Source(BaseModel):
@@ -101,6 +102,7 @@ class BacktestRequest(BaseModel):
     buyThreshold: Optional[str] = None
     sellThreshold: Optional[str] = None
     pythonCode: Optional[str] = None
+    customCode: Optional[str] = None
 
 
 class GenerateRequest(BaseModel):
@@ -135,4 +137,3 @@ class SaveBacktestResultRequest(BaseModel):
     userId: str
     factorId: str
     result: BacktestResult
-

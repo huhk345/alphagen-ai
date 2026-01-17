@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedBenchmark, setSelectedBenchmark] = useState<BenchmarkType>('BTC-USD');
+  const [customAShareCode, setCustomAShareCode] = useState<string>('');
   const [simulationData, setSimulationData] = useState<BacktestResult | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'code' | 'python'>('overview');
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +113,8 @@ const App: React.FC = () => {
         benchmark,
         activeFactor.buyThreshold,
         activeFactor.sellThreshold,
-        activeFactor.pythonCode
+        activeFactor.pythonCode,
+        benchmark === 'CUSTOM_A' ? customAShareCode : undefined
       );
       setSimulationData(result);
       
@@ -304,11 +306,26 @@ const App: React.FC = () => {
                           >
                             <option value="BTC-USD">BTC-USD</option>
                             <option value="ETH-USD">ETH-USD</option>
+                            <option value="CSI 300">CSI 300 (A-Shares)</option>
+                            <option value="CUSTOM_A">Custom A-Share</option>
                           </select>
+                          {selectedBenchmark === 'CUSTOM_A' && (
+                            <input
+                              type="text"
+                              value={customAShareCode}
+                              onChange={(e) => setCustomAShareCode(e.target.value)}
+                              placeholder="e.g. 600519"
+                              className="bg-transparent text-xs font-mono text-gray-300 focus:outline-none border-l border-gray-800 pl-3"
+                              maxLength={6}
+                            />
+                          )}
                         </div>
                         <button 
                           onClick={() => handleRunSimulation(selectedBenchmark)}
-                          disabled={isSimulating}
+                          disabled={
+                            isSimulating ||
+                            (selectedBenchmark === 'CUSTOM_A' && !/^\d{6}$/.test(customAShareCode.trim()))
+                          }
                           className="h-12 px-6 bg-white hover:bg-gray-200 text-black text-xs font-black rounded-xl flex items-center justify-center gap-2 transition-all hover:scale-[1.02] uppercase tracking-tighter disabled:opacity-50"
                         >
                             {isFetchingData ? <CloudDownload className="animate-bounce w-4 h-4" /> : <Play className="w-4 h-4" />}

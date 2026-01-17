@@ -1,6 +1,7 @@
 from typing import List, Mapping, Optional
 
 import os
+import re
 import requests
 import yfinance as yf
 
@@ -53,6 +54,23 @@ def get_market_data(benchmark: BenchmarkType) -> List[PricePoint]:
     ticker = ticker_map.get(benchmark)
     if not ticker:
         raise ValueError(f"Unsupported benchmark: {benchmark}")
+    return _fetch_yahoo_finance_data(ticker)
+
+
+def _normalize_a_share_ticker(code: str) -> str:
+    raw = (code or "").strip()
+    if not raw or not re.fullmatch(r"\d{6}", raw):
+        raise ValueError(f"Invalid A-share code: {code}")
+    first = raw[0]
+    if first in ("6", "9"):
+        suffix = ".SS"
+    else:
+        suffix = ".SZ"
+    return f"{raw}{suffix}"
+
+
+def get_a_share_market_data_from_code(code: str) -> List[PricePoint]:
+    ticker = _normalize_a_share_ticker(code)
     return _fetch_yahoo_finance_data(ticker)
 
 
@@ -126,6 +144,7 @@ def run_backtest(
     buyThreshold: Optional[str] = None,
     sellThreshold: Optional[str] = None,
     pythonCode: Optional[str] = None,
+    customCode: Optional[str] = None,
 ) -> BacktestResult:
     import time
 
@@ -134,7 +153,13 @@ def run_backtest(
     print(
         f"[Backtest] [{request_id}] Formula length={len(formula)} buy={buyThreshold or '-'} sell={sellThreshold or '-'}"
     )
-    price_data = get_market_data(benchmark)
+    if customCode:
+        print(f"[Backtest] [{request_id}] Using custom A-share code={customCode}")
+        price_data = get_a_share_market_data_from_code(customCode)
+        benchmark_label = customCode
+    else:
+        price_data = get_market_data(benchmark)
+        benchmark_label = benchmark.value
     print(f"[Backtest] [{request_id}] Loaded market data points={len(price_data)}")
     try:
         python_script = pythonCode or generate_backtest_python_code(formula)
@@ -144,7 +169,7 @@ def run_backtest(
             {
                 "priceData": [p.dict() for p in price_data],
                 "formula": formula,
-                "benchmark": benchmark.value,
+                "benchmark": benchmark_label,
                 "buyThreshold": buyThreshold,
                 "sellThreshold": sellThreshold,
             },

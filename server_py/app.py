@@ -4,6 +4,8 @@ import time
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import requests
 
 from . import data_service, db_service
 from .gemini_service import generate_alpha_factor, generate_bulk_alpha_factors
@@ -26,6 +28,12 @@ if os.path.exists(env_path):
     load_dotenv(env_path)
 
 
+raw_allowed_emails = os.getenv("ALLOWED_EMAILS") or ""
+ALLOWED_EMAILS = {
+    email.strip().lower() for email in raw_allowed_emails.split(",") if email.strip()
+}
+
+
 app = FastAPI()
 
 app.add_middleware(
@@ -41,6 +49,41 @@ async def request_id_dependency(request: Request) -> str:
     if hasattr(request.state, "request_id"):
         return request.state.request_id
     return ""
+
+
+def _verify_google_token(access_token: str):
+    try:
+        res = requests.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=5,
+        )
+        if res.status_code != 200:
+            return None
+        data = res.json()
+        if not data.get("sub") or not data.get("email"):
+            return None
+        return data
+    except Exception:
+        return None
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    if request.url.path.startswith("/api/") and request.method != "OPTIONS":
+        auth_header = request.headers.get("Authorization") or ""
+        if not auth_header.startswith("Bearer "):
+            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+        token = auth_header.split(" ", 1)[1].strip()
+        userinfo = _verify_google_token(token)
+        if not userinfo:
+            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+        email = (userinfo.get("email") or "").lower()
+        if ALLOWED_EMAILS and email not in ALLOWED_EMAILS:
+            return JSONResponse(status_code=403, content={"detail": "Forbidden"})
+        request.state.userinfo = userinfo
+    response = await call_next(request)
+    return response
 
 
 @app.middleware("http")
@@ -88,6 +131,7 @@ def run_backtest(
             buyThreshold=body.buyThreshold,
             sellThreshold=body.sellThreshold,
             pythonCode=body.pythonCode,
+            customCode=body.customCode,
         )
         print(f"[HTTP] [{request_id}] Backtest finished in data_service")
         return result
@@ -113,7 +157,11 @@ def generate_bulk(body: GenerateBulkRequest):
 
 
 @app.post("/api/db/user")
-def save_user(body: SaveUserRequest):
+def save_user(body: SaveUserRequest, request: Request):
+    userinfo = getattr(request.state, "userinfo", None) or {}
+    sub = userinfo.get("sub")
+    if not sub or body.user.id != sub:
+        raise HTTPException(status_code=403, detail="User mismatch")
     try:
         db_service.save_user(body.user)
         return {"success": True}
@@ -122,7 +170,11 @@ def save_user(body: SaveUserRequest):
 
 
 @app.post("/api/db/factors/sync")
-def sync_factors(body: SyncFactorsRequest):
+def sync_factors(body: SyncFactorsRequest, request: Request):
+    userinfo = getattr(request.state, "userinfo", None) or {}
+    sub = userinfo.get("sub")
+    if not sub or body.userId != sub:
+        raise HTTPException(status_code=403, detail="User mismatch")
     try:
         db_service.sync_factors(body.userId, body.factors)
         return {"success": True}
@@ -131,7 +183,11 @@ def sync_factors(body: SyncFactorsRequest):
 
 
 @app.post("/api/db/factors/save")
-def save_factor(body: SaveFactorRequest):
+def save_factor(body: SaveFactorRequest, request: Request):
+    userinfo = getattr(request.state, "userinfo", None) or {}
+    sub = userinfo.get("sub")
+    if not sub or body.userId != sub:
+        raise HTTPException(status_code=403, detail="User mismatch")
     try:
         db_service.save_factor(body.userId, body.factor)
         return {"success": True}
@@ -140,7 +196,11 @@ def save_factor(body: SaveFactorRequest):
 
 
 @app.delete("/api/db/factors/{factor_id}")
-def delete_factor(factor_id: str, body: DeleteFactorRequest):
+def delete_factor(factor_id: str, body: DeleteFactorRequest, request: Request):
+    userinfo = getattr(request.state, "userinfo", None) or {}
+    sub = userinfo.get("sub")
+    if not sub or body.userId != sub:
+        raise HTTPException(status_code=403, detail="User mismatch")
     try:
         db_service.delete_factor(body.userId, factor_id)
         return {"success": True}
@@ -149,9 +209,13 @@ def delete_factor(factor_id: str, body: DeleteFactorRequest):
 
 
 @app.get("/api/db/factors")
-def fetch_factors(userId: str):
+def fetch_factors(userId: str, request: Request):
+    userinfo = getattr(request.state, "userinfo", None) or {}
+    sub = userinfo.get("sub")
     if not userId:
         raise HTTPException(status_code=400, detail="UserId is required")
+    if not sub or userId != sub:
+        raise HTTPException(status_code=403, detail="User mismatch")
     try:
         return db_service.fetch_factors(userId)
     except Exception as exc:
@@ -159,7 +223,11 @@ def fetch_factors(userId: str):
 
 
 @app.post("/api/db/backtest/save")
-def save_backtest(body: SaveBacktestResultRequest):
+def save_backtest(body: SaveBacktestResultRequest, request: Request):
+    userinfo = getattr(request.state, "userinfo", None) or {}
+    sub = userinfo.get("sub")
+    if not sub or body.userId != sub:
+        raise HTTPException(status_code=403, detail="User mismatch")
     try:
         db_service.save_backtest_result(body.userId, body.factorId, body.result)
         return {"success": True}
@@ -168,9 +236,13 @@ def save_backtest(body: SaveBacktestResultRequest):
 
 
 @app.get("/api/db/backtest")
-def fetch_backtest(factorId: str):
+def fetch_backtest(factorId: str, request: Request):
     if not factorId:
         raise HTTPException(status_code=400, detail="FactorId is required")
+    userinfo = getattr(request.state, "userinfo", None) or {}
+    sub = userinfo.get("sub")
+    if not sub:
+        raise HTTPException(status_code=403, detail="User mismatch")
     try:
         return db_service.fetch_backtest_results(factorId)
     except Exception as exc:
