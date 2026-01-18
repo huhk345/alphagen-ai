@@ -86,15 +86,22 @@ pip install -r ../requirements.txt
 
 Create or edit `.env.local` in the project root:
 
+Frontend variables:
+
 - `GEMINI_API_KEY` – API key for Gemini (factor and Python code generation).
 - `VITE_API_URL` – URL of the backend API.  
   Default for local development: `http://localhost:3001/api`
+- `VITE_GITHUB_CLIENT_ID` – GitHub OAuth App Client ID used by the browser.
 
 Backend environment variables (set according to your deployment setup):
 
 - `GEMINI_API_KEY`
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY`
+- `GITHUB_CLIENT_ID` – same GitHub OAuth App Client ID as above.
+- `GITHUB_CLIENT_SECRET` – GitHub OAuth App Client Secret.
+- `ALLOWED_EMAILS` (optional) – comma-separated whitelist of allowed email addresses.
+- `PY_ENV=DEBUG` and `TEST_USER_ID` (optional) – enable a debug mode that bypasses GitHub auth when no Authorization header is present.
 
 ### 3. Start services
 
@@ -107,11 +114,31 @@ npm run dev
 Backend (FastAPI):
 
 ```bash
-cd server_py
-uvicorn backend.server_py.app:app --host 0.0.0.0 --port 3001 --reload
+uvicorn server_py.app:app --host 0.0.0.0 --port 3001 --reload
 ```
 
 Open the frontend in your browser (typically `http://localhost:5173`), log in, and you can start generating factors and running backtests.
+
+---
+
+## Authentication (GitHub OAuth)
+
+This app uses GitHub for authentication. Users sign in with their GitHub account; the frontend receives an access token which is then attached as a Bearer token to all backend API calls.
+
+High-level flow:
+
+- The frontend redirects to GitHub’s OAuth page using `VITE_GITHUB_CLIENT_ID`.
+- After the user authorizes, GitHub redirects back to the frontend with a `code`.
+- The frontend calls the backend endpoint `POST /auth/github/exchange` with that `code`.
+- The backend exchanges the code for a GitHub access token, fetches the GitHub profile, enforces `ALLOWED_EMAILS` if configured, saves the user record to Supabase, and returns a normalized `User` object plus the access token.
+- Subsequent `/api/*` requests include `Authorization: Bearer <github_access_token>`; the FastAPI middleware validates the token against GitHub on each request.
+
+To configure GitHub OAuth locally:
+
+- Create a GitHub OAuth App (Settings → Developer settings → OAuth Apps).
+- Set the Authorization callback URL to your frontend, for example:  
+  `http://localhost:3000/?github_callback=1`
+- Copy the Client ID and Client Secret into `VITE_GITHUB_CLIENT_ID`, `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` as described above.
 
 ---
 
@@ -163,6 +190,30 @@ Useful npm scripts:
 - `npm run preview` – preview the production build locally.
 
 When you change TypeScript types or backend contracts, run `npm run build` to make sure there are no type or compile-time errors.
+
+---
+
+## Docker Backend (Python 3.11 with conda)
+
+The backend can also be containerized using the provided `Dockerfile` in the project root:
+
+- Base image: `continuumio/miniconda3`
+- Python version inside the container: `3.11`
+- Core dependencies: `fastapi`, `uvicorn[standard]`, `python-dotenv`, `supabase`, `google-genai`, `yfinance[full]`, `pandas`, `numpy`, `pandas_ta==0.3.14b`, `requests`
+
+Build the image:
+
+```bash
+docker build -t alphagen-ai-server-py .
+```
+
+Run the container (make sure `.env.local` contains the backend variables described above):
+
+```bash
+docker run --env-file .env.local -p 3001:3001 alphagen-ai-server-py
+```
+
+The backend API will be available at `http://localhost:3001/api` and can be used by the Vite frontend via `VITE_API_URL`.
 
 ---
 

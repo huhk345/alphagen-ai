@@ -6,11 +6,13 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import requests
+from typing import Optional, Dict, Any
 
 from . import data_service, db_service
 from .gemini_service import generate_alpha_factor, generate_bulk_alpha_factors
 from .models import (
     AlphaFactor,
+    AuthProvider,
     BacktestRequest,
     BenchmarkType,
     DeleteFactorRequest,
@@ -20,6 +22,8 @@ from .models import (
     SaveFactorRequest,
     SaveUserRequest,
     SyncFactorsRequest,
+    GithubAuthExchangeRequest,
+    User,
 )
 
 
@@ -32,6 +36,9 @@ raw_allowed_emails = os.getenv("ALLOWED_EMAILS") or ""
 ALLOWED_EMAILS = {
     email.strip().lower() for email in raw_allowed_emails.split(",") if email.strip()
 }
+
+GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
+GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 
 
 app = FastAPI()
@@ -51,33 +58,64 @@ async def request_id_dependency(request: Request) -> str:
     return ""
 
 
-def _verify_google_token(access_token: str):
+def _fetch_github_user(access_token: str) -> Optional[Dict[str, Any]]:
     try:
-        res = requests.get(
-            "https://www.googleapis.com/oauth2/v3/userinfo",
-            headers={"Authorization": f"Bearer {access_token}"},
+        user_res = requests.get(
+            "https://api.github.com/user",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/vnd.github+json",
+            },
             timeout=5,
         )
-        if res.status_code != 200:
+        if user_res.status_code != 200:
             return None
-        data = res.json()
-        if not data.get("sub") or not data.get("email"):
+        user_data = user_res.json()
+        if not user_data.get("id"):
             return None
-        return data
+
+        email = user_data.get("email") or ""
+        if not email:
+            emails_res = requests.get(
+                "https://api.github.com/user/emails",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Accept": "application/vnd.github+json",
+                },
+                timeout=5,
+            )
+            if emails_res.status_code == 200:
+                emails = emails_res.json() or []
+                primary_email = None
+                for item in emails:
+                    if item.get("primary") and item.get("verified"):
+                        primary_email = item.get("email")
+                        break
+                if not primary_email and emails:
+                    primary_email = emails[0].get("email")
+                email = primary_email or ""
+
+        return {
+            "sub": str(user_data["id"]),
+            "email": email,
+            "name": user_data.get("name") or user_data.get("login") or "",
+            "avatar": user_data.get("avatar_url") or "",
+            "login": user_data.get("login") or "",
+        }
     except Exception:
         return None
 
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    if os.getenv("PY_ENV") == "DEBUG":
-        request.state.userinfo = { 'sub' : os.getenv("TEST_USER_ID") }
+    if os.getenv("PY_ENV") == "DEBUG" and not (request.headers.get("Authorization") or ""):
+        request.state.userinfo = {"sub": os.getenv("TEST_USER_ID")}
     elif request.url.path.startswith("/api/") and request.method != "OPTIONS":
         auth_header = request.headers.get("Authorization") or ""
         if not auth_header.startswith("Bearer "):
             return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
         token = auth_header.split(" ", 1)[1].strip()
-        userinfo = _verify_google_token(token)
+        userinfo = _fetch_github_user(token)
         if not userinfo:
             return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
         email = (userinfo.get("email") or "").lower()
@@ -249,6 +287,67 @@ def fetch_backtest(factorId: str, request: Request):
         return db_service.fetch_backtest_results(factorId)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/auth/github/exchange")
+def github_exchange(body: GithubAuthExchangeRequest):
+    if not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="GitHub OAuth 未正确配置，请设置 GITHUB_CLIENT_ID 和 GITHUB_CLIENT_SECRET。")
+
+    try:
+        token_res = requests.post(
+            "https://github.com/login/oauth/access_token",
+            headers={"Accept": "application/json"},
+            data={
+                "client_id": GITHUB_CLIENT_ID,
+                "client_secret": GITHUB_CLIENT_SECRET,
+                "code": body.code,
+                "redirect_uri": body.redirectUri,
+            },
+            timeout=5,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"GitHub token 请求失败: {exc}")
+
+    if token_res.status_code != 200:
+        raise HTTPException(status_code=400, detail="GitHub token 请求返回异常状态码。")
+
+    token_data = token_res.json()
+    if "error" in token_data:
+        message = token_data.get("error_description") or token_data.get("error") or "GitHub OAuth 失败。"
+        raise HTTPException(status_code=400, detail=message)
+
+    access_token = token_data.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=400, detail="GitHub 未返回访问令牌。")
+
+    userinfo = _fetch_github_user(access_token)
+    if not userinfo:
+        raise HTTPException(status_code=401, detail="无法获取 GitHub 用户信息。")
+
+    email = (userinfo.get("email") or "").lower()
+    if ALLOWED_EMAILS and email not in ALLOWED_EMAILS:
+        raise HTTPException(status_code=403, detail="当前 GitHub 邮箱没有访问权限。")
+
+    user_model = User(
+        id=str(userinfo.get("sub")),
+        name=userinfo.get("name") or "",
+        email=email,
+        avatar=userinfo.get("avatar") or "",
+        provider=AuthProvider.GITHUB,
+        isLoggedIn=True,
+    )
+    db_service.save_user(user_model)
+
+    return {
+        "id": user_model.id,
+        "name": user_model.name,
+        "email": user_model.email,
+        "avatar": user_model.avatar,
+        "provider": user_model.provider.value,
+        "isLoggedIn": user_model.isLoggedIn,
+        "accessToken": access_token,
+    }
 
 
 if __name__ == "__main__":

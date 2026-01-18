@@ -11,9 +11,12 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
-        'process.env.GOOGLE_CLIENT_ID': JSON.stringify(env.VITE_GOOGLE_CLIENT_ID || env.GOOGLE_CLIENT_ID),
+        'process.env.VITE_GITHUB_CLIENT_ID': JSON.stringify(env.VITE_GITHUB_CLIENT_ID || env.GITHUB_CLIENT_ID),
         'process.env.ALLOWED_EMAILS': JSON.stringify(env.VITE_ALLOWED_EMAILS || env.ALLOWED_EMAILS),
         'process.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL),
+        'process.env.GITHUB_CLIENT_SECRET': JSON.stringify(env.GITHUB_CLIENT_SECRET),
+        'process.env.GITHUB_CLIENT_ID': JSON.stringify(env.GITHUB_CLIENT_ID),
+
       },
       resolve: {
         alias: {

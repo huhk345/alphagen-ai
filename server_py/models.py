@@ -19,6 +19,7 @@ class Source(BaseModel):
 
 class AuthProvider(str, Enum):
     GOOGLE = "google"
+    GITHUB = "github"
 
 
 class User(BaseModel):
@@ -137,3 +138,8 @@ class SaveBacktestResultRequest(BaseModel):
     userId: str
     factorId: str
     result: BacktestResult
+
+
+class GithubAuthExchangeRequest(BaseModel):
+    code: str
+    redirectUri: str

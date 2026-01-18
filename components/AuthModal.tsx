@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { ShieldCheck, Chrome, X, Loader2, AlertCircle } from 'lucide-react';
-import { loginWithGoogle } from '../services/authService';
+import { ShieldCheck, Github, X, Loader2, AlertCircle } from 'lucide-react';
+import { startGithubLogin } from '../services/authService';
 import { User } from '../types';
 
 interface AuthModalProps {
@@ -18,10 +18,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess, onClose, isDismis
     setLoading(true);
     setError(null);
     try {
-      const user = await loginWithGoogle();
-      onLoginSuccess(user);
+      startGithubLogin();
     } catch (err: any) {
-      console.error(`Google login failed:`, err);
+      console.error(`GitHub login failed:`, err);
       setError(err.message || 'Authentication failed. Please check your configuration.');
     } finally {
       setLoading(false);
@@ -66,8 +65,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess, onClose, isDismis
               disabled={loading}
               className="w-full bg-white hover:bg-gray-100 text-black h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Chrome className="w-5 h-5" />}
-              Continue with Google
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Github className="w-5 h-5" />}
+              Continue with GitHub
             </button>
           </div>
 

@@ -7,7 +7,7 @@ import PerformanceDashboard from './components/PerformanceDashboard';
 import { AlphaFactor, BacktestDataPoint, BacktestMetrics, GenerationConfig, BenchmarkType, User, Trade, BacktestResult } from './types';
 import { generateAlphaFactor, generateBulkAlphaFactors } from './services/geminiService';
 import { runBacktestOnServer } from './services/dataService';
-import { getSession, logout } from './services/authService';
+import { getSession, logout, completeGithubLogin } from './services/authService';
 import { fetchFactorsFromCloud, saveBacktestResultToCloud, saveFactorToCloud, deleteFactorFromCloud } from './services/dbService';
 import { BrainCircuit, Play, ChevronRight, Copy, Terminal, Info, LayoutDashboard, AlertCircle, ExternalLink, Globe, CloudDownload, Cloud, Code2 } from 'lucide-react';
 
@@ -31,6 +31,25 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const handleAuth = async () => {
+      try {
+        const newUser = await completeGithubLogin();
+        if (newUser) {
+          setUser(newUser);
+          setIsAuthModalOpen(false);
+          setError(null);
+          await loadUserData(newUser.id);
+
+          const cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete('code');
+          cleanUrl.searchParams.delete('state');
+          cleanUrl.searchParams.delete('github_callback');
+          window.history.replaceState({}, document.title, cleanUrl.toString());
+          return;
+        }
+      } catch (err: any) {
+        setError(err.message || 'GitHub 登录失败，请检查配置或稍后重试。');
+      }
+
       const sessionUser = getSession();
       if (sessionUser) {
         setUser(sessionUser);

@@ -6,7 +6,7 @@ export interface User {
   name: string;
   email: string;
   avatar: string;
-  provider: 'google';
+  provider: 'google' | 'github';
   isLoggedIn: boolean;
   accessToken?: string;
 }
