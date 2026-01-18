@@ -89,8 +89,10 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ data, metri
       }
     };
   }, [data]);
-
+  
   const icValue = typeof metrics.ic === 'number' && !Number.isNaN(metrics.ic) ? metrics.ic.toFixed(2) : "N/A";
+  const isAShareBenchmark = metrics.benchmarkName === 'CSI 300' || /^\d{6}$/.test(metrics.benchmarkName);
+  const currencySymbol = isAShareBenchmark ? '¥' : '$';
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700">
@@ -192,9 +194,9 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ data, metri
                         {trade.type}
                       </span>
                     </td>
-                    <td className="py-4 text-white font-medium">${trade.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</td>
+                    <td className="py-4 text-white font-medium">{currencySymbol}{trade.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</td>
                     <td className="py-4 font-mono text-xs">{trade.quantity?.toFixed(4) ?? '0.0000'}</td>
-                    <td className="py-4 text-white font-medium">${trade.amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</td>
+                    <td className="py-4 text-white font-medium">{currencySymbol}{trade.amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</td>
                   </tr>
                 ))
               ) : (
