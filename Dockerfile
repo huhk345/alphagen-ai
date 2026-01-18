@@ -13,7 +13,7 @@ COPY pandas_ta_bak/pandas_ta-0.3.14b.tar.gz /tmp/pandas_ta-0.3.14b.tar.gz
 RUN python -m pip install --upgrade pip && \
     pip install fastapi "uvicorn[standard]" python-dotenv supabase "google-genai" "yfinance[full]" pandas==2.2.1 numpy==1.26.4 requests && \
     pip install /tmp/pandas_ta-0.3.14b.tar.gz && \
-    rm /tmp/pandas_ta-0.3.14b.tar.gz \
+    rm /tmp/pandas_ta-0.3.14b.tar.gz &&\
     python -V && \
     pip freeze
 
