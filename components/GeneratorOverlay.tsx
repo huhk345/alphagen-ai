@@ -111,6 +111,7 @@ const GeneratorOverlay: React.FC<GeneratorOverlayProps> = ({ onGenerate, onBulkG
                 <option>US Large Cap Equities</option>
                 <option>Emerging Markets</option>
                 <option>Crypto Top 50</option>
+                <option>Chinese HS300</option>
               </select>
             </div>
             <div className="space-y-2">

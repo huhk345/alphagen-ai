@@ -61,7 +61,7 @@ def generate_alpha_factor(prompt: str, config: GenerationConfig) -> AlphaFactor:
         response = client.models.generate_content(
             model="gemini-3-flash-preview",
             contents=(
-                f'Acting as a Senior Quant for BTC markets, generate a sophisticated alpha factor for: "{prompt}". '
+                f'Acting as a Senior Quant for {config.investmentUniverse} markets, generate a sophisticated alpha factor for: "{prompt}". '
                 f"Universe: {config.investmentUniverse}. Target: {config.timeHorizon}. "
                 "Incorporate real-time market regime knowledge. The formula must be a valid one-line Pandas/Numpy expression. "
                 "Also provide recommended buy and sell threshold values based on the factor's characteristics."
